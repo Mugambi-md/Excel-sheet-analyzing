@@ -51,12 +51,19 @@ class DataExtractor:
         return self._df
 
     def left_join(self, df_left, df_right, join_key):
-        # df_right = self.read_file()
+        df_right = self.read_file()
 
-        # if join_key not in df_left.columns:
-        #     raise ValueError(f"{join_key} not found in selected columns")
-        # if join_key not in df_right.columns:
-        #     raise ValueError(f"{join_key} no found in second file")
+        if join_key not in df_left.columns:
+            raise ValueError(f"{join_key} not found in selected columns")
+        if join_key not in df_right.columns:
+            raise ValueError(f"{join_key} no found in second file")
+        # Drop duplicate column from right Before merge
+        duplicate_cols = [
+            col for col in df_right.columns
+            if col in df_left.columns and col !=join_key
+        ]
+        if duplicate_cols:
+            df_right = df_right.drop(columns=duplicate_cols)
         # Skip rows with missing join keys
         # df_left = df_left.dropna(subset=[join_key])
         # df_right = df_right.dropna(subset=[join_key])

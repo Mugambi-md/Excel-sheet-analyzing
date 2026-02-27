@@ -1,3 +1,4 @@
+from tkinterdnd2 import DND_FILES
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from base_window import BaseWindow
@@ -41,7 +42,9 @@ class MainGUI(BaseWindow):
         ).pack(pady=(5, 0), anchor="s")
 
         self.ref_frame = self.create_click_frame(
-            "↓\nSelect xlsx, xls or CSV", self.load_reference_file
+            "↓\nSelect xlsx, xls or CSV",
+            self.load_reference_file,
+            self.load_reference_file
         )
         # Title 2
         tk.Label(
@@ -49,7 +52,9 @@ class MainGUI(BaseWindow):
             bg="aliceblue", fg="blue", font=("Arial", 14, "bold", "underline")
         ).pack(pady=(5, 0), anchor="s")
         self.data_frame = self.create_click_frame(
-            "↓\nSelect xlsx, xls or CSV", self.load_second_file
+            "↓\nSelect xlsx, xls or CSV",
+            self.load_second_file,
+            self.load_second_file
         )
         # Export Button
         tk.Button(
@@ -57,8 +62,8 @@ class MainGUI(BaseWindow):
             bd=4, relief="groove", font=("Arial", 12, "bold"), command=self.export_data
         ).pack(pady=(10, 0))
 
-    def create_click_frame(self, text, command):
-        frame = tk.Frame(self.main_frame, height=100, bd=3, relief="ridge")
+    def create_click_frame(self, text, command, drop_callback):
+        frame = tk.Frame(self.main_frame, height=100, bd=4, relief="ridge")
         frame.pack(fill="x", padx=10)
         frame.pack_propagate(False)
 
@@ -67,18 +72,32 @@ class MainGUI(BaseWindow):
 
         frame.bind("<Button-1>", lambda e: command())
         label.bind("<Button-1>", lambda e: command())
+        # Drag & Drop support
+        frame.drop_target_register(DND_FILES)
+        frame.dnd_bind("<<Drop>>", lambda e: drop_callback(e.data))
 
         return frame
 
+    # Normalize dropped path
+    def _normalize_dropped_path(self, data):
+        path = data.strip()
+        if path.startswith("{") and path.endswith("}"):
+            path = path[1:-1]
+        return path
+
     # File loaders
-    def load_reference_file(self):
-        path = filedialog.askopenfilename(
-            title="Select Reference File",
-            filetypes=[
-                ("Excel files", "*.xlsx *.xls"),
-                ("CSV files", "*.csv")
-            ]
-        )
+    def load_reference_file(self, path=None):
+        if not path:
+            path = filedialog.askopenfilename(
+                title="Select Reference File",
+                filetypes=[
+                    ("Excel files", "*.xlsx *.xls"),
+                    ("CSV files", "*.csv")
+                ]
+            )
+        else:
+            path = self._normalize_dropped_path(path)
+
         if not path:
             return
         self.first_file = path
@@ -88,29 +107,32 @@ class MainGUI(BaseWindow):
         selector = ColumnSelectorGUI(
             self.window, columns, "Select Reference Columns"
         )
-        selected_columns = selector.selected_columns
 
-        if not selected_columns:
+        if not selector.selected_columns:
             messagebox.showwarning(
                 "No Selection", "No Columns Selected", parent=self.window
             )
             return
         self.join_key = selector.join_key.get()
-        self.df_selected = reader.extract_columns(selected_columns)
+        self.df_selected = reader.extract_columns(selector.selected_columns)
 
         messagebox.showinfo(
             "Loaded", f"Reference File Loaded\nJoin Key: {self.join_key}.",
             parent=self.window
         )
 
-    def load_second_file(self):
-        path = filedialog.askopenfilename(
-            title="Select Data File",
-            filetypes=[
-                ("Excel files", "*.xlsx *.xls"),
-                ("CSV files", "*.csv")
-            ]
-        )
+    def load_second_file(self, path=None):
+        if not path:
+            path = filedialog.askopenfilename(
+                title="Select Data File",
+                filetypes=[
+                    ("Excel files", "*.xlsx *.xls"),
+                    ("CSV files", "*.csv")
+                ]
+            )
+        else:
+            path = self._normalize_dropped_path(path)
+
         if not path:
             return
         reader = InputReader(path)
@@ -168,7 +190,8 @@ class MainGUI(BaseWindow):
         )
 
 if __name__ == "__main__":
-    root = tk.Tk()
+    from tkinterdnd2 import TkinterDnD
+    root = TkinterDnD.Tk()
     # Enable DPI scaling (call once before widgets)
     BaseWindow.enable_dpi_scaling(root, scale=1.25)
     app = MainGUI(root)
