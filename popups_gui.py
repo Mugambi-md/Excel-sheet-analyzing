@@ -7,7 +7,7 @@ class ColumnSelectorGUI(BaseWindow):
     def __init__(self, parent, columns, title="Select Columns"):
         self.window = tk.Toplevel(parent)
         self.window.title(title)
-        self.center_window(self.window, 350, 550, parent)
+        self.center_window(self.window, 400, 600, parent)
         self.window.transient(parent)
         self.window.grab_set()
 
@@ -34,7 +34,7 @@ class ColumnSelectorGUI(BaseWindow):
             font=("Arial", 14, "bold", "underline"),
         ).pack(side="top", anchor="center", pady=(5, 0))
         self.list_frame.pack(fill="both", expand=True)
-        self.listbox.pack(side="left", fill="both", expand=True)
+        self.listbox.pack(side="left", fill="both", expand=True, ipadx=5)
         scrollbar = tk.Scrollbar(self.list_frame, command=self.listbox.yview)
         self.listbox.config(yscrollcommand=scrollbar.set)
         scrollbar.pack(side="right", fill="y")
@@ -47,17 +47,18 @@ class ColumnSelectorGUI(BaseWindow):
             font=("Arial", 14, "bold", "underline")
         ).pack(pady=(5, 0))
 
-        btn_frame = ScrollableFrame(self.main_frame, "lightgray", 170)
+        btn_frame = ScrollableFrame(self.main_frame, "white", 170)
         btn_frame.pack(fill="both", expand=True)
         radio_frame = btn_frame.scrollable_frame
 
         for col in self.columns:
             tk.Radiobutton(
-                radio_frame, text=col, variable=self.join_key, value=col
+                radio_frame, text=col, variable=self.join_key, value=col,
+                bg="white", font=("Arial", 11, "bold")
             ).pack(anchor="w", pady=2, padx=5)
 
         tk.Button(
-            self.main_frame, text="Confirm", bg="gray", fg="blue", bd=3,
+            self.main_frame, text="Confirm", bg="blue", fg="white", bd=4,
             relief="groove", font=("Arial", 10, "bold"),
             command=self.confirm_selection,
         ).pack(pady=(5, 0))

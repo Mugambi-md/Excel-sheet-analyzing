@@ -7,8 +7,8 @@ from popups_gui import ColumnSelectorGUI
 class MainGUI(BaseWindow):
     def __init__(self, parent):
         self.window = parent
-        self.window.title("Data Frame Builder")
-        self.center_window(self.window, 500, 450)
+        self.window.title("Spreed Sheet DataSieve")
+        self.center_window(self.window, 400, 450)
         self.window.configure(bg="aliceblue")
         self.window.grab_set()
 
@@ -29,10 +29,15 @@ class MainGUI(BaseWindow):
     def build_ui(self):
         """Build user interface."""
         self.main_frame.pack(fill="both", expand=True, pady=(0, 10), padx=10)
+        # Window Title
+        tk.Label(
+            self.main_frame, text="Spreed Sheet DataSieve", bg="aliceblue",
+            fg="dodgerblue", font=("Arial", 20, "bold", "underline")
+        ).pack(pady=(5, 0), anchor="s")
         # Title 1
         tk.Label(
             self.main_frame, text="Load File With Reference Key Columns",
-            bg="aliceblue", fg="blue", font=("Arial", 12, "bold", "underline")
+            bg="aliceblue", fg="blue", font=("Arial", 14, "bold", "underline")
         ).pack(pady=(5, 0), anchor="s")
 
         self.ref_frame = self.create_click_frame(
@@ -41,15 +46,15 @@ class MainGUI(BaseWindow):
         # Title 2
         tk.Label(
             self.main_frame, text="Load File With Columns to Build Data Frame",
-            bg="aliceblue", fg="blue", font=("Arial", 12, "bold", "underline")
+            bg="aliceblue", fg="blue", font=("Arial", 14, "bold", "underline")
         ).pack(pady=(5, 0), anchor="s")
         self.data_frame = self.create_click_frame(
             "↓\nSelect xlsx, xls or CSV", self.load_second_file
         )
         # Export Button
         tk.Button(
-            self.main_frame, text="Export data\nExcel/CSV", fg="green", bd=4,
-            relief="groove", font=("Arial", 11, "bold"), command=self.export_data
+            self.main_frame, text="Export Data", bg="green", fg="white",
+            bd=4, relief="groove", font=("Arial", 12, "bold"), command=self.export_data
         ).pack(pady=(10, 0))
 
     def create_click_frame(self, text, command):
@@ -137,6 +142,7 @@ class MainGUI(BaseWindow):
         extractor = DataExtractor(self.second_file)
         self.final_df = extractor.left_join(
             df_left=self.df_selected,
+            df_right=self.df_second_selected,
             join_key=self.join_key
         )
 
