@@ -1,47 +1,74 @@
 from tkinterdnd2 import DND_FILES
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from base_window import BaseWindow
+import os
+import sys
+from base_window import BaseWindow, ScrollableFrame
 from read_files import InputReader, DataExtractor
 from popups_gui import ColumnSelectorGUI
 
 class MainGUI(BaseWindow):
     def __init__(self, parent):
         self.window = parent
-        self.window.title("Spreed Sheet DataSieve")
+        self.window.title("DataSieve")
+        icon_path = self._get_resource_path("myicon.ico")
+        self.window.iconbitmap(icon_path)
         self.center_window(self.window, 400, 450)
         self.window.configure(bg="aliceblue")
         self.window.grab_set()
 
+        self.ref_frame = None
+        self.ref_label = None
+        self.data_frame = None
+        self.data_label = None
         self.first_file = None
         self.second_file = None
         self.df_selected = None
         self.df_second_selected = None
-        self.second_selected_columns = None
         self.join_key = None
         self.final_df = None
-        self.ref_frame = None
-        self.data_frame = None
+
         self.main_frame = tk.Frame(
             self.window, bg="aliceblue", bd=4, relief="solid"
         )
+        self.top_frame = tk.Frame(self.main_frame, bg="aliceblue")
+        self.menu_btn = tk.Label(
+            self.top_frame, text="⁞", bg="aliceblue", cursor="hand2",
+            font=("Arial", 20, "bold")
+        )
+        self.side_menu = ScrollableFrame(self.window, bg="white", width=270)
 
         self.build_ui()
+
+    @staticmethod
+    def _get_resource_path(relative_path):
+        """Get absolute path to resource (works for Pyinstaller)."""
+        try:
+            base_path = sys._MEIPASS
+        except Exception:
+            base_path = os.path.abspath(".")
+        return os.path.join(base_path, relative_path)
+
     def build_ui(self):
         """Build user interface."""
         self.main_frame.pack(fill="both", expand=True, pady=(0, 10), padx=10)
+        self.top_frame.pack(side="top", fill="x", pady=(5, 0))
+        self.menu_btn.pack(side="left", padx=5)
+        self.menu_btn.bind("<Button-1>", lambda e: self.open_side_menu())
+        title_frame = tk.Frame(self.top_frame, bg="aliceblue")
+        title_frame.pack(side="left", fill="x", padx=20)
         # Window Title
         tk.Label(
-            self.main_frame, text="Spreed Sheet DataSieve", bg="aliceblue",
-            fg="dodgerblue", font=("Arial", 20, "bold", "underline")
-        ).pack(pady=(5, 0), anchor="s")
+            title_frame, text="Sieve Data Sheet", bg="aliceblue", width=20,
+            fg="darkblue", font=("Arial", 20, "bold", "underline")
+        ).pack(anchor="center")
         # Title 1
         tk.Label(
             self.main_frame, text="Load File With Reference Key Columns",
             bg="aliceblue", fg="blue", font=("Arial", 14, "bold", "underline")
-        ).pack(pady=(5, 0), anchor="s")
+        ).pack(anchor="s")
 
-        self.ref_frame = self.create_click_frame(
+        self.ref_frame, self.ref_label = self.create_click_frame(
             "↓\nSelect xlsx, xls or CSV",
             self.load_reference_file,
             self.load_reference_file
@@ -51,23 +78,27 @@ class MainGUI(BaseWindow):
             self.main_frame, text="Load File With Columns to Build Data Frame",
             bg="aliceblue", fg="blue", font=("Arial", 14, "bold", "underline")
         ).pack(pady=(5, 0), anchor="s")
-        self.data_frame = self.create_click_frame(
+        self.data_frame, self.data_label = self.create_click_frame(
             "↓\nSelect xlsx, xls or CSV",
             self.load_second_file,
             self.load_second_file
         )
         # Export Button
         tk.Button(
-            self.main_frame, text="Export Data", bg="green", fg="white",
-            bd=4, relief="groove", font=("Arial", 12, "bold"), command=self.export_data
+            self.main_frame, text="Export", bg="green", fg="white", bd=4,
+            relief="groove", font=("Arial", 12, "bold"), height=1,
+            command=self.export_data
         ).pack(pady=(10, 0))
 
     def create_click_frame(self, text, command, drop_callback):
-        frame = tk.Frame(self.main_frame, height=100, bd=4, relief="ridge")
+        """Creates a clickable frame to upload file."""
+        frame = tk.Frame(self.main_frame, height=80, bd=4, relief="ridge")
         frame.pack(fill="x", padx=10)
         frame.pack_propagate(False)
 
-        label = tk.Label(frame, text=text, font=("Arial", 11, "italic"))
+        label = tk.Label(
+            frame, text=text, fg="blue", wraplength=250, font=("Arial", 12, "italic")
+        )
         label.pack(expand=True)
 
         frame.bind("<Button-1>", lambda e: command())
@@ -76,10 +107,11 @@ class MainGUI(BaseWindow):
         frame.drop_target_register(DND_FILES)
         frame.dnd_bind("<<Drop>>", lambda e: drop_callback(e.data))
 
-        return frame
+        return frame, label
 
     # Normalize dropped path
-    def _normalize_dropped_path(self, data):
+    @staticmethod
+    def _normalize_dropped_path(data):
         path = data.strip()
         if path.startswith("{") and path.endswith("}"):
             path = path[1:-1]
@@ -87,6 +119,7 @@ class MainGUI(BaseWindow):
 
     # File loaders
     def load_reference_file(self, path=None):
+        """Loading file for data referencing while extracting from Second file."""
         if not path:
             path = filedialog.askopenfilename(
                 title="Select Reference File",
@@ -101,6 +134,8 @@ class MainGUI(BaseWindow):
         if not path:
             return
         self.first_file = path
+        filename = os.path.basename(path)
+        self.ref_label.config(text=filename, fg="green")
         reader = InputReader(self.first_file)
         columns = reader.get_columns()
 
@@ -122,6 +157,7 @@ class MainGUI(BaseWindow):
         )
 
     def load_second_file(self, path=None):
+        """Loading second file to extract data."""
         if not path:
             path = filedialog.askopenfilename(
                 title="Select Data File",
@@ -135,7 +171,10 @@ class MainGUI(BaseWindow):
 
         if not path:
             return
-        reader = InputReader(path)
+        self.second_file = path
+        filename = os.path.basename(path)
+        self.data_label.config(text=filename, fg="green")
+        reader = InputReader(self.second_file)
         columns = reader.get_columns()
 
         selector = ColumnSelectorGUI(
@@ -154,6 +193,18 @@ class MainGUI(BaseWindow):
             parent=self.window
         )
 
+    @staticmethod
+    def generate_unique_filename(directory, base_name, extension):
+        """generate a unique filename by adding number if file exists."""
+        counter = 1
+        file_name = f"{base_name}{extension}"
+        full_path = os.path.join(directory, file_name)
+        while os.path.exists(full_path):
+            counter += 1
+            file_name = f"{base_name}_{counter}{extension}"
+            full_path = os.path.join(directory, file_name)
+        return file_name
+
     def export_data(self):
         if self.df_selected is None or self.df_second_selected is None:
             messagebox.showerror(
@@ -168,8 +219,21 @@ class MainGUI(BaseWindow):
             join_key=self.join_key
         )
 
+        # Create default filename and save location based on reference file
+        ref_name = os.path.basename(self.first_file)
+        ref_base = os.path.splitext(ref_name)[0]
+
+        initial_dir = os.path.dirname(self.first_file)
+        base_name = f"{ref_base}_updated"
+        # Default extension
+        extension = ".xlsx"
+        default_name = self.generate_unique_filename(
+            initial_dir, base_name, extension
+        )
         save_path = filedialog.asksaveasfilename(
             title="Save Output",
+            initialdir=initial_dir,
+            initialfile=default_name,
             defaultextension=".xlsx",
             filetypes=[
                 ("Excel file", "*.xlsx"),
@@ -184,10 +248,117 @@ class MainGUI(BaseWindow):
         else:
             self.final_df.to_excel(save_path, index=False)
 
+        self.ref_label.config(text="↓\nSelect xlsx, xls or CSV", fg="blue")
+        self.data_label.config(text="↓\nSelect xlsx, xls or CSV", fg="blue")
+        self.first_file = None
+        self.second_file = None
+        self.df_selected = None
+        self.df_second_selected = None
+        self.join_key = None
+        self.final_df = None
         messagebox.showinfo(
             "Success", f"File Exported Successfully to:\n{save_path}",
             parent=self.window
         )
+
+    def open_side_menu(self):
+        """Show the left side Menu."""
+        self.side_menu.place(x=0, y=0, height=self.window.winfo_height())
+        inside_frame = self.side_menu.scrollable_frame
+        # Clear Previous widgets
+        for w in inside_frame.winfo_children():
+            w.destroy()
+        # Close button
+        close_btn = tk.Label(
+            inside_frame, text="X", bg="white", fg="red", cursor="hand2",
+            font=("Arial", 12)
+        )
+        close_btn.pack(anchor="ne", padx=5)
+        close_btn.bind("<Button-1>", lambda e: self.close_side_menu())
+        # Menu buttons (About)
+        self.collapsible_section(
+            parent=inside_frame, title="About", context_text=(
+                "Spreadsheet DataSieve.\n\nThis application extracts data "
+                "from large Excel or CSV files by matching reference columns"
+                " and exporting the required rows into a new Excel or CSV.\n"
+                "It helps automate spreadsheet data filtering and sorting."
+            ),
+            text_font=("Arial", 12)
+        )
+        # How it works
+        self.collapsible_section(
+            parent=inside_frame, title="How It Works", context_text=(
+                "This application extracts data from large Excel or CSV "
+                "files by matching reference columns.\nUpload the first "
+                "data sheet (Excel or CSV) in reference frame that has or "
+                "original data that you want to select in overall sheet (data"
+                " sheet in data frame). Select columns that will be available "
+                "also in data sheet, select one reference column that has "
+                "unique values across all rows in the sheet.\nSelect and "
+                "upload main data sheet (overall sheet) in data frame that "
+                "contain all data to select the columns you selected earlier "
+                "in the first data sheet. Select columns that you want to "
+                "pick from overall data sheet. Press Confirm button "
+                "and Export button to create a new CSV or Excel Sheet"
+            ),
+            text_font=("Arial", 12)
+        )
+        # Version
+        self.collapsible_section(
+            parent=inside_frame, title="Version", context_text=(
+                "Version: 1.0\n"
+                "Build: Desktop Edition\n"
+                "Author: Mugambi (SwiftGlance)\n"
+                "©2026"
+            ),
+            text_font=("Arial", 11)
+        )
+
+    def close_side_menu(self):
+        """Hide the side menu."""
+        self.side_menu.place_forget()
+
+    @staticmethod
+    def collapsible_section(parent, title, context_text, text_font):
+        """Creates a collapsible menu section."""
+        container = tk.Frame(parent, bg="white")
+        container.pack(fill="x", pady=(0, 2))
+
+        header = tk.Frame(container, bg="white")
+        header.pack(fill="x")
+
+        arrow = tk.Label(
+            header, text="v", bg="white", fg="green", font=("Arial", 12, "bold")
+        )
+        arrow.pack(side="right", padx=5)
+
+        title_lbl = tk.Label(
+            header, text=title, bg="white", fg="green", cursor="hand2",
+            font=("Arial", 14, "bold")
+        )
+        title_lbl.pack(side="left", padx=10, pady=(5, 0))
+        content = tk.Label(
+            container, text=context_text, bg="white", justify="left",
+            wraplength=260, font=text_font
+        )
+        content_visible = False
+
+        def toggle():
+            nonlocal content_visible
+
+            if content_visible:
+                content.pack_forget()
+                arrow.config(text="v")
+                content_visible = False
+            else:
+                content.pack(padx=5, pady=5)
+                arrow.config(text="ʌ")
+                content_visible = True
+
+        header.bind("<Button-1>", lambda e: toggle())
+        title_lbl.bind("<Button-1>", lambda e: toggle())
+        arrow.bind("<Button-1>", lambda e: toggle())
+
 
 if __name__ == "__main__":
     from tkinterdnd2 import TkinterDnD

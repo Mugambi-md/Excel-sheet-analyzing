@@ -51,7 +51,7 @@ class DataExtractor:
         return self._df
 
     def left_join(self, df_left, df_right, join_key):
-        df_right = self.read_file()
+        # df_right = self.read_file()
 
         if join_key not in df_left.columns:
             raise ValueError(f"{join_key} not found in selected columns")
