@@ -1,6 +1,6 @@
 from tkinterdnd2 import DND_FILES
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 import os
 import sys
 from base_window import BaseWindow, ScrollableFrame
@@ -88,7 +88,11 @@ class MainGUI(BaseWindow):
             self.main_frame, text="Export", bg="green", fg="white", bd=4,
             relief="groove", font=("Arial", 12, "bold"), height=1,
             command=self.export_data
-        ).pack(pady=(10, 0))
+        ).pack(pady=10)
+        tk.Label(
+            self.main_frame, text="©SwiftGlance2026", bg="aliceblue",
+            font=("Arial", 11, "italic")
+        ).pack(pady=10, anchor="center")
 
     def create_click_frame(self, text, command, drop_callback):
         """Creates a clickable frame to upload file."""
@@ -218,48 +222,49 @@ class MainGUI(BaseWindow):
             df_right=self.df_second_selected,
             join_key=self.join_key
         )
+        self.preview_window()
 
-        # Create default filename and save location based on reference file
-        ref_name = os.path.basename(self.first_file)
-        ref_base = os.path.splitext(ref_name)[0]
-
-        initial_dir = os.path.dirname(self.first_file)
-        base_name = f"{ref_base}_updated"
-        # Default extension
-        extension = ".xlsx"
-        default_name = self.generate_unique_filename(
-            initial_dir, base_name, extension
-        )
-        save_path = filedialog.asksaveasfilename(
-            title="Save Output",
-            initialdir=initial_dir,
-            initialfile=default_name,
-            defaultextension=".xlsx",
-            filetypes=[
-                ("Excel file", "*.xlsx"),
-                ("CSV files", "*.csv")
-            ]
-        )
-        if not save_path:
-            return
-
-        if save_path.endswith(".csv"):
-            self.final_df.to_csv(save_path, index=False)
-        else:
-            self.final_df.to_excel(save_path, index=False)
-
-        self.ref_label.config(text="↓\nSelect xlsx, xls or CSV", fg="blue")
-        self.data_label.config(text="↓\nSelect xlsx, xls or CSV", fg="blue")
-        self.first_file = None
-        self.second_file = None
-        self.df_selected = None
-        self.df_second_selected = None
-        self.join_key = None
-        self.final_df = None
-        messagebox.showinfo(
-            "Success", f"File Exported Successfully to:\n{save_path}",
-            parent=self.window
-        )
+        # # Create default filename and save location based on reference file
+        # ref_name = os.path.basename(self.first_file)
+        # ref_base = os.path.splitext(ref_name)[0]
+        #
+        # initial_dir = os.path.dirname(self.first_file)
+        # base_name = f"{ref_base}_updated"
+        # # Default extension
+        # extension = ".xlsx"
+        # default_name = self.generate_unique_filename(
+        #     initial_dir, base_name, extension
+        # )
+        # save_path = filedialog.asksaveasfilename(
+        #     title="Save Output",
+        #     initialdir=initial_dir,
+        #     initialfile=default_name,
+        #     defaultextension=".xlsx",
+        #     filetypes=[
+        #         ("Excel file", "*.xlsx"),
+        #         ("CSV files", "*.csv")
+        #     ]
+        # )
+        # if not save_path:
+        #     return
+        #
+        # if save_path.endswith(".csv"):
+        #     self.final_df.to_csv(save_path, index=False)
+        # else:
+        #     self.final_df.to_excel(save_path, index=False)
+        #
+        # self.ref_label.config(text="↓\nSelect xlsx, xls or CSV", fg="blue")
+        # self.data_label.config(text="↓\nSelect xlsx, xls or CSV", fg="blue")
+        # self.first_file = None
+        # self.second_file = None
+        # self.df_selected = None
+        # self.df_second_selected = None
+        # self.join_key = None
+        # self.final_df = None
+        # messagebox.showinfo(
+        #     "Success", f"File Exported Successfully to:\n{save_path}",
+        #     parent=self.window
+        # )
 
     def open_side_menu(self):
         """Show the left side Menu."""
@@ -358,6 +363,106 @@ class MainGUI(BaseWindow):
         header.bind("<Button-1>", lambda e: toggle())
         title_lbl.bind("<Button-1>", lambda e: toggle())
         arrow.bind("<Button-1>", lambda e: toggle())
+
+    def preview_window(self):
+        """Preview extracted data before exporting."""
+        preview = tk.Tk()
+        preview.title("Preview Data")
+        preview.configure(bg="aliceblue")
+        preview.state("zoomed")
+        preview.grab_set()
+
+        main_frame = tk.Frame(preview, bg="aliceblue", bd=4, relief="solid")
+        main_frame.pack(fill="both", expand=True, pady=(0, 10), padx=10)
+
+        # Scrollbars
+        y_scroll = tk.Scrollbar(main_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+        x_scroll = tk.Scrollbar(main_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        tree = ttk.Treeview(
+            main_frame,
+            columns=list(self.final_df.columns),
+            show="headings",
+            yscrollcommand=y_scroll.set,
+            xscrollcommand=x_scroll.set
+        )
+        y_scroll.config(command=tree.yview)
+        x_scroll.config(command=tree.xview)
+
+        tree.pack(side="left", fill="both", expand=True)
+        for col in self.final_df.columns:
+            tree.heading(col, text=col)
+            tree.column(col, width=50, anchor="center")
+
+        # Insert preview rows (limit for speed)
+        for _, row in self.final_df.head(300).iterrows():
+            tree.insert("", "end", values=list(row))
+
+        # Buttons
+        btn_frame = tk.Frame(preview, bg="aliceblue")
+        btn_frame.pack(fill="x", padx=10)
+        cancel_btn = tk.Button(
+            btn_frame, text="Cancel", fg="red", bd=2, relief="groove",
+            font=("Arial", 10, "bold"), command=preview.destroy
+        )
+        cancel_btn.pack(side="right", padx=5)
+
+        confirm_btn = tk.Button(
+            btn_frame, text="Export", bg="green", fg="white", bd=2,
+            relief="groove", font=("Arial", 10, "bold"),
+            command=lambda: self.confirm_export(preview)
+        )
+        confirm_btn.pack(side="right")
+
+    def confirm_export(self, preview_window):
+        """Save file after confirmation."""
+        preview_window.destroy()
+
+        # Create default filename and save location based on reference file
+        ref_name = os.path.basename(self.first_file)
+        ref_base = os.path.splitext(ref_name)[0]
+
+        initial_dir = os.path.dirname(self.first_file)
+        base_name = f"{ref_base}_updated"
+        # Default extension
+        extension = ".xlsx"
+        default_name = self.generate_unique_filename(
+            initial_dir, base_name, extension
+        )
+        save_path = filedialog.asksaveasfilename(
+            title="Save Output",
+            initialdir=initial_dir,
+            initialfile=default_name,
+            defaultextension=".xlsx",
+            filetypes=[
+                ("Excel file", "*.xlsx"),
+                ("CSV files", "*.csv")
+            ]
+        )
+        if not save_path:
+            return
+
+        if save_path.endswith(".csv"):
+            self.final_df.to_csv(save_path, index=False)
+        else:
+            self.final_df.to_excel(save_path, index=False)
+        self.reset_state()
+        messagebox.showinfo(
+            "Success", f"File Exported Successfully to:\n{save_path}",
+            parent=self.window
+        )
+    def reset_state(self):
+        """Reset UI after Export."""
+        self.ref_label.config(text="↓\nSelect xlsx, xls or CSV", fg="blue")
+        self.data_label.config(text="↓\nSelect xlsx, xls or CSV", fg="blue")
+        self.first_file = None
+        self.second_file = None
+        self.df_selected = None
+        self.df_second_selected = None
+        self.join_key = None
+        self.final_df = None
 
 
 if __name__ == "__main__":
