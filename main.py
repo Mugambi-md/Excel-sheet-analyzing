@@ -1,6 +1,7 @@
 from tkinterdnd2 import DND_FILES
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+import tkinter.font as tkfont
 import os
 import sys
 from base_window import BaseWindow, ScrollableFrame
@@ -200,7 +201,7 @@ class MainGUI(BaseWindow):
     @staticmethod
     def generate_unique_filename(directory, base_name, extension):
         """generate a unique filename by adding number if file exists."""
-        counter = 1
+        counter = 0
         file_name = f"{base_name}{extension}"
         full_path = os.path.join(directory, file_name)
         while os.path.exists(full_path):
@@ -223,48 +224,6 @@ class MainGUI(BaseWindow):
             join_key=self.join_key
         )
         self.preview_window()
-
-        # # Create default filename and save location based on reference file
-        # ref_name = os.path.basename(self.first_file)
-        # ref_base = os.path.splitext(ref_name)[0]
-        #
-        # initial_dir = os.path.dirname(self.first_file)
-        # base_name = f"{ref_base}_updated"
-        # # Default extension
-        # extension = ".xlsx"
-        # default_name = self.generate_unique_filename(
-        #     initial_dir, base_name, extension
-        # )
-        # save_path = filedialog.asksaveasfilename(
-        #     title="Save Output",
-        #     initialdir=initial_dir,
-        #     initialfile=default_name,
-        #     defaultextension=".xlsx",
-        #     filetypes=[
-        #         ("Excel file", "*.xlsx"),
-        #         ("CSV files", "*.csv")
-        #     ]
-        # )
-        # if not save_path:
-        #     return
-        #
-        # if save_path.endswith(".csv"):
-        #     self.final_df.to_csv(save_path, index=False)
-        # else:
-        #     self.final_df.to_excel(save_path, index=False)
-        #
-        # self.ref_label.config(text="↓\nSelect xlsx, xls or CSV", fg="blue")
-        # self.data_label.config(text="↓\nSelect xlsx, xls or CSV", fg="blue")
-        # self.first_file = None
-        # self.second_file = None
-        # self.df_selected = None
-        # self.df_second_selected = None
-        # self.join_key = None
-        # self.final_df = None
-        # messagebox.showinfo(
-        #     "Success", f"File Exported Successfully to:\n{save_path}",
-        #     parent=self.window
-        # )
 
     def open_side_menu(self):
         """Show the left side Menu."""
@@ -366,12 +325,14 @@ class MainGUI(BaseWindow):
 
     def preview_window(self):
         """Preview extracted data before exporting."""
-        preview = tk.Tk()
+        preview = tk.Toplevel(self.window)
         preview.title("Preview Data")
         preview.configure(bg="aliceblue")
         preview.state("zoomed")
         preview.grab_set()
 
+        style = ttk.Style(preview)
+        style.theme_use("clam")
         main_frame = tk.Frame(preview, bg="aliceblue", bd=4, relief="solid")
         main_frame.pack(fill="both", expand=True, pady=(0, 10), padx=10)
 
@@ -388,18 +349,21 @@ class MainGUI(BaseWindow):
             yscrollcommand=y_scroll.set,
             xscrollcommand=x_scroll.set
         )
+        style.configure("Treeview", font=("Arial", 11))
+        style.configure("Treeview.Heading", font=("Arial", 13, "bold"))
         y_scroll.config(command=tree.yview)
         x_scroll.config(command=tree.xview)
 
         tree.pack(side="left", fill="both", expand=True)
         for col in self.final_df.columns:
             tree.heading(col, text=col)
-            tree.column(col, width=50, anchor="center")
+            tree.column(col, width=30, anchor="center")
 
         # Insert preview rows (limit for speed)
         for _, row in self.final_df.head(300).iterrows():
-            tree.insert("", "end", values=list(row))
-
+            formatted_row = [self.format_value(v) for v in row]
+            tree.insert("", "end", values=formatted_row)
+        self.auto_resize_treeview(tree, self.final_df)
         # Buttons
         btn_frame = tk.Frame(preview, bg="aliceblue")
         btn_frame.pack(fill="x", padx=10)
@@ -453,6 +417,7 @@ class MainGUI(BaseWindow):
             "Success", f"File Exported Successfully to:\n{save_path}",
             parent=self.window
         )
+
     def reset_state(self):
         """Reset UI after Export."""
         self.ref_label.config(text="↓\nSelect xlsx, xls or CSV", fg="blue")
@@ -463,6 +428,46 @@ class MainGUI(BaseWindow):
         self.df_second_selected = None
         self.join_key = None
         self.final_df = None
+
+    @staticmethod
+    def auto_resize_treeview(tree, df, preview_rows=300):
+        """Automatically resize Treeview columns based on content."""
+        font = tkfont.Font()
+        sample_df = df.head(preview_rows)
+
+        for col in df.columns:
+            # Start with header width
+            max_width = font.measure(str(col))
+            # Measure each cell in the preview rows
+            for value in sample_df[col]:
+                text = str(MainGUI.format_value(value))
+                width = font.measure(text)
+                if width > max_width:
+                    max_width = width
+
+            # Add padding
+            tree.column(col, width=max_width + 10)
+
+    @staticmethod
+    def format_value(value):
+        """Format numbers with a thousand separators."""
+        if value is None:
+            return ""
+
+        try:
+            # Float formatting
+            if isinstance(value, float):
+                if value.is_integer():
+                    return f"{int(value):,}"
+                # Otherwise keep 2 decimals
+                return f"{value:,.2f}"
+            # Integer formatting
+            if isinstance(value, int):
+                return f"{value:,}"
+        except Exception:
+            pass
+
+        return str(value)
 
 
 if __name__ == "__main__":
