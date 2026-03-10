@@ -53,21 +53,19 @@ class MainGUI(BaseWindow):
     def build_ui(self):
         """Build user interface."""
         self.main_frame.pack(fill="both", expand=True, pady=(0, 10), padx=10)
-        self.top_frame.pack(side="top", fill="x", pady=(5, 0))
-        self.menu_btn.pack(side="left", padx=5)
+        self.top_frame.pack(side="top", fill="x", pady=(0, 10))
+        self.menu_btn.pack(side="left", padx=(3, 10))
         self.menu_btn.bind("<Button-1>", lambda e: self.open_side_menu())
-        title_frame = tk.Frame(self.top_frame, bg="aliceblue")
-        title_frame.pack(side="left", fill="x", padx=20)
         # Window Title
         tk.Label(
-            title_frame, text="Sieve Data Sheet", bg="aliceblue", width=20,
-            fg="darkblue", font=("Arial", 20, "bold", "underline")
+            self.top_frame, text="Sieve Data", bg="aliceblue", fg="purple",
+            font=("Georgia", 22, "bold", "italic", "underline")
         ).pack(anchor="center")
         # Title 1
         tk.Label(
-            self.main_frame, text="Load File With Reference Key Columns",
-            bg="aliceblue", fg="blue", font=("Arial", 14, "bold", "underline")
-        ).pack(anchor="s")
+            self.main_frame, text="Upload Sheet to Reference From", fg="blue",
+            bg="aliceblue", font=("Arial", 14, "bold", "italic")
+        ).pack(pady=(10, 0), anchor="s")
 
         self.ref_frame, self.ref_label = self.create_click_frame(
             "↓\nSelect xlsx, xls or CSV",
@@ -76,9 +74,9 @@ class MainGUI(BaseWindow):
         )
         # Title 2
         tk.Label(
-            self.main_frame, text="Load File With Columns to Build Data Frame",
-            bg="aliceblue", fg="blue", font=("Arial", 14, "bold", "underline")
-        ).pack(pady=(5, 0), anchor="s")
+            self.main_frame, text="Upload Sheet to Sieve From", fg="blue",
+            bg="aliceblue", font=("Arial", 14, "bold", "italic")
+        ).pack(pady=(10, 0), anchor="s")
         self.data_frame, self.data_label = self.create_click_frame(
             "↓\nSelect xlsx, xls or CSV",
             self.load_second_file,
@@ -97,7 +95,7 @@ class MainGUI(BaseWindow):
 
     def create_click_frame(self, text, command, drop_callback):
         """Creates a clickable frame to upload file."""
-        frame = tk.Frame(self.main_frame, height=80, bd=4, relief="ridge")
+        frame = tk.Frame(self.main_frame, height=80, bd=2, relief="ridge")
         frame.pack(fill="x", padx=10)
         frame.pack_propagate(False)
 
@@ -239,21 +237,11 @@ class MainGUI(BaseWindow):
         )
         close_btn.pack(anchor="ne", padx=5)
         close_btn.bind("<Button-1>", lambda e: self.close_side_menu())
-        # Menu buttons (About)
+        # How it works \u2753
         self.collapsible_section(
-            parent=inside_frame, title="About", context_text=(
-                "Spreadsheet DataSieve.\n\nThis application extracts data "
-                "from large Excel or CSV files by matching reference columns"
-                " and exporting the required rows into a new Excel or CSV.\n"
-                "It helps automate spreadsheet data filtering and sorting."
-            ),
-            text_font=("Arial", 12)
-        )
-        # How it works
-        self.collapsible_section(
-            parent=inside_frame, title="How It Works", context_text=(
-                "This application extracts data from large Excel or CSV "
-                "files by matching reference columns.\nUpload the first "
+            parent=inside_frame, title="How It Works ?", context_text=(
+                "DataSieve.\n\nThis application extracts data from large "
+                "Excel or CSV files by matching columns.\nUpload the first "
                 "data sheet (Excel or CSV) in reference frame that has or "
                 "original data that you want to select in overall sheet (data"
                 " sheet in data frame). Select columns that will be available "
@@ -265,17 +253,20 @@ class MainGUI(BaseWindow):
                 "pick from overall data sheet. Press Confirm button "
                 "and Export button to create a new CSV or Excel Sheet"
             ),
-            text_font=("Arial", 12)
-        )
-        # Version
-        self.collapsible_section(
-            parent=inside_frame, title="Version", context_text=(
-                "Version: 1.0\n"
-                "Build: Desktop Edition\n"
-                "Author: Mugambi (SwiftGlance)\n"
-                "©2026"
-            ),
             text_font=("Arial", 11)
+        )
+        # Menu buttons (About)
+        self.collapsible_section(
+            parent=inside_frame, title="About (App Info)", context_text=(
+                "DataSieve.\n\nThis application extracts data from two large"
+                " Excel or CSV files by matching reference columns and creates"
+                " one sheet (CSV or Excel) on pressing export button.\n"
+                "It helps automate spreadsheet data filtering and sorting.\n\n"
+                "Version: V1.0\nBuild: Desktop Edition\nAuthor: Mugambi(Swift"
+                "Glance)\nEmail: mugambi4sm@gmail.com\n©SwiftGlance2026"
+                " All rights reserved."
+            ),
+            text_font=("Arial", 11, "italic")
         )
 
     def close_side_menu(self):
@@ -303,7 +294,7 @@ class MainGUI(BaseWindow):
         title_lbl.pack(side="left", padx=10, pady=(5, 0))
         content = tk.Label(
             container, text=context_text, bg="white", justify="left",
-            wraplength=260, font=text_font
+            wraplength=255, font=text_font
         )
         content_visible = False
 
