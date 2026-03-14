@@ -1,5 +1,6 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
+import tkinter.font as tkfont
 from base_window import BaseWindow, ScrollableFrame
 
 
@@ -174,3 +175,117 @@ class LoadingPopup(BaseWindow):
     def close(self):
         """Close Popup."""
         self.window.destroy()
+
+
+class PreviewWindow:
+    """Preview extracted dataframe before export."""
+    def __init__(self, parent, title, dataframe, confirm_callback):
+        self.window = tk.Toplevel(parent)
+        self.window.title("Preview Data")
+        self.window.configure(bg="aliceblue")
+        self.window.state("zoomed")
+        self.window.grab_set()
+
+        self.df = dataframe
+        self.confirm_callback = confirm_callback
+        self.file_name = title
+        style = ttk.Style(self.window)
+        style.theme_use("clam")
+        style.configure("Treeview", font=("Arial", 11))
+        style.configure("Treeview.Heading", font=("Arial", 13, "bold"))
+        self.main_frame = tk.Frame(
+            self.window, bg="aliceblue", bd=4, relief="solid"
+        )
+        self.table_frame = tk.Frame(
+            self.main_frame, bg="aliceblue", bd=2, relief="ridge"
+        )
+        self.tree = ttk.Treeview(
+            self.table_frame, columns=list(self.df.columns), show="headings"
+        )
+
+        self.build_ui()
+
+    def build_ui(self):
+        self.main_frame.pack(fill="both", expand=True, pady=(0, 10), padx=10)
+        # Buttons
+        btn_frame = tk.Frame(self.main_frame, bg="aliceblue")
+        btn_frame.pack(fill="x", padx=10)
+        title_txt = self.file_name.capitalize()
+        tk.Label(
+            btn_frame, text=title_txt, bg="aliceblue", fg="purple",
+            justify="center", font=("Georgia", 20, "bold", "italic", "underline")
+        ).pack(side="left")
+        tk.Button(
+            btn_frame, text="Cancel", fg="red", bd=2, relief="groove",
+            font=("Arial", 10, "bold"), command=self.window.destroy
+        ).pack(side="right")
+        tk.Button(
+            btn_frame, text="Export", bg="green", fg="white", bd=2,
+            relief="groove", font=("Arial", 10, "bold"), command=self.confirm_export
+        ).pack(side="right")
+        # Table Frame
+        self.table_frame.pack(fill="both", expand=True)
+        # Scrollbars
+        y_scroll = tk.Scrollbar(
+            self.table_frame, orient="vertical", command=self.tree.yview
+        )
+        x_scroll = tk.Scrollbar(
+            self.table_frame, orient="horizontal", command=self.tree.xview
+        )
+        self.tree.configure(
+            yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set
+        )
+        y_scroll.pack(side="right", fill="y")
+        x_scroll.pack(side="bottom", fill="x")
+        self.tree.pack(side="left", fill="both", expand=True)
+
+        # Setup Columns
+        for col in self.df.columns:
+            self.tree.heading(col, text=col)
+            self.tree.column(col, width=30, anchor="center")
+
+        # Insert preview rows
+        for _, row, in self.df.head(300).iterrows():
+            formatted_row = [self.format_value(v) for v in row]
+            self.tree.insert("", "end", values=formatted_row)
+
+        self.auto_resize_treeview()
+
+    def confirm_export(self):
+        """Call callback from MainGUI."""
+        self.window.destroy()
+        self.confirm_callback()
+
+    def auto_resize_treeview(self, preview_rows=300):
+        """Automatically resize columns."""
+        font = tkfont.Font()
+        sample_df = self.df.head(preview_rows)
+
+        for col in self.df.columns:
+            max_width = font.measure(str(col))
+
+            for value in sample_df[col]:
+                text = str(self.format_value(value))
+                width = font.measure(text)
+                if width > max_width:
+                    max_width = width
+
+            self.tree.column(col, width=max_width + 5)
+
+    @staticmethod
+    def format_value(value):
+        """Format number with separators."""
+        if value is None:
+            return ""
+
+        try:
+            if isinstance(value, float):
+                if value.is_integer():
+                    return f"{int(value):,}"
+                return f"{value:,.2f}"
+
+            if isinstance(value, int):
+                return f"{value:,}"
+        except Exception:
+            pass
+        return str(value)

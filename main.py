@@ -1,12 +1,11 @@
 from tkinterdnd2 import DND_FILES
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
-import tkinter.font as tkfont
+from tkinter import filedialog, messagebox
 import os
 import sys
 from base_window import BaseWindow, ScrollableFrame
 from read_files import InputReader, DataExtractor
-from popups_gui import ColumnSelectorGUI
+from popups_gui import ColumnSelectorGUI, PreviewWindow
 from utils import ThreadHelper
 
 
@@ -371,66 +370,19 @@ class MainGUI(BaseWindow):
         arrow.bind("<Button-1>", lambda e: toggle())
 
     def preview_window(self):
-        """Preview extracted data before exporting."""
-        preview = tk.Toplevel(self.window)
-        preview.title("Preview Data")
-        preview.configure(bg="aliceblue")
-        preview.state("zoomed")
-        preview.grab_set()
-
-        style = ttk.Style(preview)
-        style.theme_use("clam")
-        main_frame = tk.Frame(preview, bg="aliceblue", bd=4, relief="solid")
-        main_frame.pack(fill="both", expand=True, pady=(0, 10), padx=10)
-
-        # Scrollbars
-        y_scroll = tk.Scrollbar(main_frame, orient="vertical")
-        y_scroll.pack(side="right", fill="y")
-        x_scroll = tk.Scrollbar(main_frame, orient="horizontal")
-        x_scroll.pack(side="bottom", fill="x")
-
-        tree = ttk.Treeview(
-            main_frame,
-            columns=list(self.final_df.columns),
-            show="headings",
-            yscrollcommand=y_scroll.set,
-            xscrollcommand=x_scroll.set
+        """Open Preview window."""
+        ref_name = os.path.basename(self.first_file)
+        ref_base = os.path.splitext(ref_name)[0]
+        file_name = f"{ref_base}_updated"
+        PreviewWindow(
+            parent=self.window,
+            title=file_name,
+            dataframe=self.final_df,
+            confirm_callback=lambda: self.confirm_export()
         )
-        style.configure("Treeview", font=("Arial", 11))
-        style.configure("Treeview.Heading", font=("Arial", 13, "bold"))
-        y_scroll.config(command=tree.yview)
-        x_scroll.config(command=tree.xview)
 
-        tree.pack(side="left", fill="both", expand=True)
-        for col in self.final_df.columns:
-            tree.heading(col, text=col)
-            tree.column(col, width=30, anchor="center")
-
-        # Insert preview rows (limit for speed)
-        for _, row in self.final_df.head(300).iterrows():
-            formatted_row = [self.format_value(v) for v in row]
-            tree.insert("", "end", values=formatted_row)
-        self.auto_resize_treeview(tree, self.final_df)
-        # Buttons
-        btn_frame = tk.Frame(preview, bg="aliceblue")
-        btn_frame.pack(fill="x", padx=10)
-        cancel_btn = tk.Button(
-            btn_frame, text="Cancel", fg="red", bd=2, relief="groove",
-            font=("Arial", 10, "bold"), command=preview.destroy
-        )
-        cancel_btn.pack(side="right", padx=5)
-
-        confirm_btn = tk.Button(
-            btn_frame, text="Export", bg="green", fg="white", bd=2,
-            relief="groove", font=("Arial", 10, "bold"),
-            command=lambda: self.confirm_export(preview)
-        )
-        confirm_btn.pack(side="right")
-
-    def confirm_export(self, preview_window):
+    def confirm_export(self):
         """Save file after confirmation."""
-        preview_window.destroy()
-
         # Create default filename and save location based on reference file
         ref_name = os.path.basename(self.first_file)
         ref_base = os.path.splitext(ref_name)[0]
@@ -475,47 +427,6 @@ class MainGUI(BaseWindow):
         self.df_second_selected = None
         self.join_key = None
         self.final_df = None
-
-    @staticmethod
-    def auto_resize_treeview(tree, df, preview_rows=300):
-        """Automatically resize Treeview columns based on content."""
-        font = tkfont.Font()
-        sample_df = df.head(preview_rows)
-
-        for col in df.columns:
-            # Start with header width
-            max_width = font.measure(str(col))
-            # Measure each cell in the preview rows
-            for value in sample_df[col]:
-                text = str(MainGUI.format_value(value))
-                width = font.measure(text)
-                if width > max_width:
-                    max_width = width
-
-            # Add padding
-            tree.column(col, width=max_width + 10)
-
-    @staticmethod
-    def format_value(value):
-        """Format numbers with a thousand separators."""
-        if value is None:
-            return ""
-
-        try:
-            # Float formatting
-            if isinstance(value, float):
-                if value.is_integer():
-                    return f"{int(value):,}"
-                # Otherwise keep 2 decimals
-                return f"{value:,.2f}"
-            # Integer formatting
-            if isinstance(value, int):
-                return f"{value:,}"
-        except Exception:
-            pass
-
-        return str(value)
-
 
 if __name__ == "__main__":
     from tkinterdnd2 import TkinterDnD
