@@ -7,6 +7,8 @@ import sys
 from base_window import BaseWindow, ScrollableFrame
 from read_files import InputReader, DataExtractor
 from popups_gui import ColumnSelectorGUI
+from utils import ThreadHelper
+
 
 class MainGUI(BaseWindow):
     def __init__(self, parent):
@@ -95,7 +97,7 @@ class MainGUI(BaseWindow):
 
     def create_click_frame(self, text, command, drop_callback):
         """Creates a clickable frame to upload file."""
-        frame = tk.Frame(self.main_frame, height=80, bd=2, relief="ridge")
+        frame = tk.Frame(self.main_frame, height=80, bd=2, relief="groove")
         frame.pack(fill="x", padx=10)
         frame.pack_propagate(False)
 
@@ -139,13 +141,31 @@ class MainGUI(BaseWindow):
         self.first_file = path
         filename = os.path.basename(path)
         self.ref_label.config(text=filename, fg="green")
+        # Show loader
+        ThreadHelper.run(
+            parent=self.window,
+            message="Uploading Reference File...",
+            task_func=self._load_reference_task,
+            finish_func=self._load_reference_finish
+        )
+
+    def _load_reference_task(self, progress):
+        """Background loader for reference file."""
+        progress("Opening Reference File...", 10)
         reader = InputReader(self.first_file)
+        progress("Reading Column Headers...", 50)
         columns = reader.get_columns()
+        progress("Preparing Column Selector...", 90)
+
+        return reader, columns
+
+    def _load_reference_finish(self, result):
+        """Background loader for reference file."""
+        reader, columns = result
 
         selector = ColumnSelectorGUI(
             self.window, columns, "Select Reference Columns"
         )
-
         if not selector.selected_columns:
             messagebox.showwarning(
                 "No Selection", "No Columns Selected", parent=self.window
@@ -153,11 +173,10 @@ class MainGUI(BaseWindow):
             return
         self.join_key = selector.join_key.get()
         self.df_selected = reader.extract_columns(selector.selected_columns)
-
         messagebox.showinfo(
-            "Loaded", f"Reference File Loaded\nJoin Key: {self.join_key}.",
-            parent=self.window
-        )
+            "Loaded", "Reference File Loaded Successfully.\n"
+            f"Join Key: {self.join_key}.", parent=self.window
+            )
 
     def load_second_file(self, path=None):
         """Loading second file to extract data."""
@@ -177,23 +196,38 @@ class MainGUI(BaseWindow):
         self.second_file = path
         filename = os.path.basename(path)
         self.data_label.config(text=filename, fg="green")
-        reader = InputReader(self.second_file)
-        columns = reader.get_columns()
-
-        selector = ColumnSelectorGUI(
-            self.window, columns, "Select Data Columns"
+        # Show loader
+        ThreadHelper.run(
+            parent=self.window,
+            message="Uploading Main Data File...",
+            task_func=self._load_second_task,
+            finish_func=self._load_second_finish
         )
 
-        if not selector.selected_columns:
-            return
+    def _load_second_task(self, progress):
+        """Background loader for second file."""
+        progress("Opening Main Data File...", 10)
+        reader = InputReader(self.second_file)
+        progress("Reading Column Headers...", 50)
+        columns = reader.get_columns()
+        progress("Preparing Column Selector...", 90)
+        return reader, columns
 
-        self.second_file = path
+    def _load_second_finish(self, result):
+        reader, columns = result
+        selector = ColumnSelectorGUI(
+            self.window, columns, "Select Columns You Want Data From"
+        )
+        if not selector.selected_columns:
+            messagebox.showwarning(
+                "No Selection", "No Columns Selected", parent=self.window
+            )
+            return
         self.df_second_selected = reader.extract_columns(
             selector.selected_columns
         )
         messagebox.showinfo(
-            "Loaded", "Second File and Columns Loaded Successfully.",
-            parent=self.window
+            "Loaded", "Second File Loaded Successfully.", parent=self.window
         )
 
     @staticmethod
@@ -215,12 +249,34 @@ class MainGUI(BaseWindow):
                 parent=self.window
             )
             return
+        # Show loader
+        ThreadHelper.run(
+            parent=self.window,
+            message="Exporting Data File...",
+            task_func=self._export_task,
+            finish_func=self._export_finish
+        )
+
+    def _export_task(self, progress):
+        """Background Export Process."""
+        progress("Preparing Extractor...", 10)
         extractor = DataExtractor(self.second_file)
-        self.final_df = extractor.left_join(
+
+        progress("Matching Reference Data...", 40)
+        result = extractor.left_join(
             df_left=self.df_selected,
             df_right=self.df_second_selected,
             join_key=self.join_key
         )
+
+        progress("Preparing Preview...", 80)
+
+        progress("Done.", 100)
+
+        return result
+
+    def _export_finish(self, final_df):
+        self.final_df = final_df
         self.preview_window()
 
     def open_side_menu(self):
